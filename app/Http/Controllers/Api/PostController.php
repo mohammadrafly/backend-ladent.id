@@ -11,9 +11,31 @@ use Illuminate\Support\Facades\Validator;
 
 class PostController extends Controller
 {
+    public function year($year)
+    {
+        if ($year) {
+            $posts = Post::whereYear('created_at', $year)->get();
+        } else {
+            $posts = Post::all();
+        }
+
+        return new PostResource(true, 'List Data Posts', $posts);
+    }
+
+    public function search($query)
+    {
+        if ($query) {
+            $posts = Post::where('title', 'like', '%' . $query . '%')->get();
+        } else {
+            $posts = Post::all();
+        }
+
+        return new PostResource(true, 'List Data Posts', $posts);
+    }
+
     public function index()
     {
-        $posts = Post::latest()->paginate(5);
+        $posts = Post::all();
         return new PostResource(true, 'List Data Posts', $posts);
     }
 
@@ -23,6 +45,7 @@ class PostController extends Controller
             'image'     => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
             'title'     => 'required',
             'content'   => 'required',
+            'slug'      => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -36,14 +59,23 @@ class PostController extends Controller
             'image'     => $image->hashName(),
             'title'     => $request->title,
             'content'   => $request->content,
+            'slug'      => $request->slug
         ]);
 
         return new PostResource(true, 'Data Post Berhasil Ditambahkan!', $post);
     }
 
-    public function show($id)
+    public function show($slug)
     {
-        $post = Post::find($id);
+        $post = Post::where('slug', $slug)->first();
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found'
+            ], 404);
+        }
+
         return new PostResource(true, 'Detail Data Post!', $post);
     }
 
@@ -52,6 +84,7 @@ class PostController extends Controller
         $validator = Validator::make($request->all(), [
             'title'     => 'required',
             'content'   => 'required',
+            'slug'      => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -78,12 +111,14 @@ class PostController extends Controller
                 'image'     => $image->hashName(),
                 'title'     => $request->title,
                 'content'   => $request->content,
+                'slug'      => $request->slug
             ]);
         } else {
 
             $post->update([
                 'title'     => $request->title,
                 'content'   => $request->content,
+                'slug'      => $request->slug
             ]);
         }
 
