@@ -11,9 +11,15 @@ use Illuminate\Support\Facades\Validator;
 
 class ArtistController extends Controller
 {
+    public function findByName($name)
+    {
+        $artists = Artist::where('name', $name)->first();
+        return new ArtistResource(true, 'List Data Artists', $artists);
+    }
+
     public function index()
     {
-        $artists = Artist::latest()->paginate(5);
+        $artists = Artist::all();
         return new ArtistResource(true, 'List Data Artists', $artists);
     }
 

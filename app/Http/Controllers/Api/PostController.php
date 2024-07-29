@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Validator;
 
 class PostController extends Controller
 {
-    public function year($year)
+    public function findByYear($year)
     {
         if ($year) {
             $posts = Post::whereYear('created_at', $year)->get();
@@ -22,7 +22,7 @@ class PostController extends Controller
         return new PostResource(true, 'List Data Posts', $posts);
     }
 
-    public function search($query)
+    public function findBySearch($query)
     {
         if ($query) {
             $posts = Post::where('title', 'like', '%' . $query . '%')->get();
@@ -31,6 +31,20 @@ class PostController extends Controller
         }
 
         return new PostResource(true, 'List Data Posts', $posts);
+    }
+
+    public function findBySlug($slug)
+    {
+        $post = Post::where('slug', $slug)->first();
+
+        if (!$post) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Post not found'
+            ], 404);
+        }
+
+        return new PostResource(true, 'Detail Data Post!', $post);
     }
 
     public function index()
@@ -65,9 +79,9 @@ class PostController extends Controller
         return new PostResource(true, 'Data Post Berhasil Ditambahkan!', $post);
     }
 
-    public function show($slug)
+    public function show($id)
     {
-        $post = Post::where('slug', $slug)->first();
+        $post = Post::find($id);
 
         if (!$post) {
             return response()->json([
