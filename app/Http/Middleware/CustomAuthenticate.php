@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Resources\AuthResource;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,14 +17,21 @@ class CustomAuthenticate
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::guard('sanctum')->guest()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized. No valid token provided.',
-                'data' => null
-            ], 401);
+        $authHeader = $request->header('Authorization');
+
+        if ($authHeader && strpos($authHeader, 'Bearer ') === 0) {
+            $token = str_replace('Bearer ', '', $authHeader);
+            $tokenInstance = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+
+            if ($tokenInstance && $tokenInstance->can('access-scope')) {
+                return $next($request);
+            }
         }
 
-        return $next($request);
+        return response()->json([
+            'success' => false,
+            'message' => 'Unauthorized. No valid token provided.',
+            'data' => null
+        ], 401);
     }
 }

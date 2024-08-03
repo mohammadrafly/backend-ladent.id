@@ -7,32 +7,61 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AuthResource;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function user(Request $request)
+    {
+        $authHeader = $request->header('Authorization');
+        $token = str_replace('Bearer ', '', $authHeader);
+        $tokenInstance = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+
+        if ($tokenInstance) {
+            return new AuthResource(true, 'User authenticated', $tokenInstance);
+        } else {
+            return new AuthResource(false, 'Invalid token', null);
+        }
+    }
+
     public function login(Request $request)
     {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
+            'remember' => 'boolean',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $credentials = $request->only('email', 'password');
+        $remember = $request->filled('remember');
 
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (Auth::attempt($credentials, $remember)) {
+            $token = $user->createToken($request->email)->plainTextToken;
+            $tokenInstance = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            $data = [
+                'token' => $token,
+                'name' => $tokenInstance->name,
+            ];
+            return new AuthResource(true, 'Login successful.', $data);
         }
 
-        return $user->createToken($request->email)->plainTextToken;
+        return new AuthResource(false, 'Invalid credentials.', null);
     }
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        $authHeader = $request->header('Authorization');
+        $token = str_replace('Bearer ', '', $authHeader);
+        $tokenInstance = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
 
-        return new AuthResource(true, 'Berhasil logout!', null);
+        if ($tokenInstance) {
+            $tokenInstance->delete();
+            return new AuthResource(true, 'Berhasil logout!', null);
+        } else {
+            return new AuthResource(false, 'Token tidak ditemukan.', null);
+        }
     }
 }

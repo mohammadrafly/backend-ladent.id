@@ -4,20 +4,29 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\ArtistController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Middleware\CustomAuthenticate;
 
 Route::prefix('auth/v1')->group(function() {
     Route::controller(AuthController::class)->group(function() {
         Route::post('login', 'login');
     });
-    Route::middleware(CustomAuthenticate::class)->group( function () {
+
+    Route::middleware(['customAuthenticate'])->group( function () {
         Route::resource('posts', PostController::class);
         Route::resource('artist', ArtistController::class);
+        Route::prefix('users')->group(function() {
+            Route::controller(UserController::class)->group(function() {
+                Route::get('detail/{user}', 'detail');
+            });
+        });
         Route::controller(AuthController::class)->group(function() {
-            Route::get('auth/v1/logout', 'logout');
+            Route::post('logout', 'logout');
         });
     });
 });
+
+Route::get('user', [AuthController::class, 'user']);
 
 Route::controller(PostController::class)->group(function() {
     Route::get('posts', 'index')->name('posts.all');
